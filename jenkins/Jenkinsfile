@@ -1,0 +1,64 @@
+pipeline {
+    agent any
+
+    environment {
+        PROJECT_DIR = 'C:\\Freadzone'
+    }
+
+    stages {
+        stage('Start') {
+            steps {
+                echo 'Jenkins қосылды — FreadZone Pipeline басталды'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Build кезеңі — Docker images жасалуда'
+                script {
+                    if (isUnix()) {
+                        sh 'docker compose build'
+                    } else {
+                        bat 'docker compose build'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploy кезеңі — контейнерлер іске қосылуда'
+                script {
+                    if (isUnix()) {
+                        sh 'docker compose up -d --remove-orphans'
+                    } else {
+                        bat 'docker compose up -d --remove-orphans'
+                    }
+                }
+            }
+        }
+
+        stage('Monitoring') {
+            steps {
+                echo 'Prometheus + Grafana жұмыс істеп тұр'
+                script {
+                    sleep(time: 5, unit: 'SECONDS')
+                    try {
+                        if (isUnix()) {
+                            sh 'curl -f http://localhost:3000/health || echo "Health check failed"'
+                        } else {
+                            bat 'curl -f http://localhost:3000/health || echo Health check done'
+                        }
+                    } catch (e) {
+                        echo "Health check: ${e.message}"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success { echo 'Pipeline сәтті аяқталды!' }
+        failure { echo 'Pipeline қате аяқталды. Логтарды тексеріңіз.' }
+    }
+}

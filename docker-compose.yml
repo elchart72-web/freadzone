@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: freadzone_db
+    restart: always
+    environment:
+      POSTGRES_DB: freadzone
+      POSTGRES_USER: fread_user
+      POSTGRES_PASSWORD: FreadZone2025!
+    ports:
+      - "5433:5432"
+    volumes:
+      - freadzone_postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - freadzone_net
+
+  backend:
+    build: ./backend
+    container_name: freadzone_app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: fread_user
+      DB_PASSWORD: FreadZone2025!
+      DB_NAME: freadzone
+      JWT_SECRET: freadzone_secret_2025
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: models/gemini-2.5-flash
+      PORT: 3000
+    depends_on:
+      - postgres
+    networks:
+      - freadzone_net
+
+  frontend:
+    build: ./frontend
+    container_name: freadzone_web
+    restart: always
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - freadzone_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: freadzone_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - freadzone_net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: freadzone_prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alert.rules.yml:/etc/prometheus/alert.rules.yml
+      - prometheus_data:/prometheus
+    networks:
+      - freadzone_net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: freadzone_grafana
+    restart: always
+    ports:
+      - "3002:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: grafana2025
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - freadzone_net
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: freadzone_node_exporter
+    restart: always
+    ports:
+      - "9100:9100"
+    networks:
+      - freadzone_net
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: freadzone_alertmanager
+    restart: always
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - freadzone_net
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: freadzone_jenkins
+    restart: always
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+    networks:
+      - freadzone_net
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: freadzone_n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: n8n2025
+      WEBHOOK_URL: http://localhost:5678
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  freadzone_postgres_data:
+  prometheus_data:
+  grafana_data:
+  jenkins_data:
+  n8n_data:
+
+networks:
+  freadzone_net:
+    driver: bridge

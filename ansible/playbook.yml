@@ -1,0 +1,55 @@
+---
+- name: FreadZone деплой
+  hosts: local
+  vars:
+    project_dir: "/mnt/c/Freadzone"
+
+  tasks:
+    - name: Docker жұмыс жасайтынын тексеру
+      command: docker --version
+      register: docker_version
+
+    - name: Docker нұсқасын шығару
+      debug:
+        msg: "{{ docker_version.stdout }}"
+
+    - name: .env файлы бар ма тексеру
+      stat:
+        path: "{{ project_dir }}/.env"
+      register: env_file
+
+    - name: .env файлы жоқ болса ескерту
+      debug:
+        msg: "ЕСКЕРТУ: .env файлы жоқ. .env.example негізінде жасаңыз."
+      when: not env_file.stat.exists
+
+    - name: Docker Compose контейнерлерді тоқтату
+      command: docker compose down
+      args:
+        chdir: "{{ project_dir }}"
+      ignore_errors: yes
+
+    - name: Docker Compose образдарды жасау
+      command: docker compose build
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Docker Compose іске қосу
+      command: docker compose up -d
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: 10 секунд күту
+      pause:
+        seconds: 10
+
+    - name: Health check
+      uri:
+        url: "http://localhost:3000/health"
+        return_content: yes
+      register: health
+      ignore_errors: yes
+
+    - name: Health status шығару
+      debug:
+        msg: "Health: {{ health.status | default('failed') }}"

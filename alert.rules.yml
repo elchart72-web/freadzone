@@ -1,0 +1,29 @@
+groups:
+  - name: freadzone_alerts
+    rules:
+      - alert: FreadZoneSiteDown
+        expr: up{job="app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "FreadZone сайты өшті"
+          description: "FreadZone сайты жұмыс істемей тұр"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Жад аз қалды"
+          description: "Қолжетімді жад 10% төмен"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU жүктемесі жоғары"
+          description: "CPU 85% жоғары жүктеме"

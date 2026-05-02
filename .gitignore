@@ -1,0 +1,8 @@
+node_modules/
+.env
+nginx/ssl/
+backups/
+*.log
+dist/
+.terraform/
+terraform.tfstate*
